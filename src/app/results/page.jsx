@@ -3,8 +3,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 
 export default function Results() {
   const searchParams = useSearchParams();
-  const score = parseInt(searchParams.get("score") || "0");
-  const totalQuestions = parseInt(searchParams.get("totalQuestions") || "10");
+  const score = parseInt(searchParams.get("score") || "0", 10);
+  const totalQuestions = parseInt(
+    searchParams.get("totalQuestions") || "10",
+    10
+  );
   const gameMode = searchParams.get("mode") || "10";
   const router = useRouter();
 
@@ -24,15 +27,14 @@ export default function Results() {
       return "😞 Don't worry, try again and get a better score!";
     }
   };
-
   const shareResults = () => {
     const text = `I got ${score} out of ${totalQuestions} in the "${gameMode}" mode! Can you achieve a better result? Try now! 🔥`;
-    const url = window.location.href;
+    const url = typeof window !== "undefined" ? window.location.href : "";
 
     if (navigator.share) {
       navigator
         .share({
-          title: "My test result!",
+          title: "My Quiz Result!",
           text,
           url,
         })
@@ -47,12 +49,11 @@ export default function Results() {
   };
 
   return (
-    <div className=" max-w-md mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg text-center">
+    <div className="max-w-md mx-auto mt-10 p-6 bg-white shadow-lg rounded-lg text-center">
       <h1 className="text-3xl font-bold mb-4">
         Your result 📊: {score} / {totalQuestions}
       </h1>
       <p className="text-lg mb-4">{getMessage()}</p>
-
       <div className="flex flex-col gap-3">
         <button
           onClick={() => router.push("/")}

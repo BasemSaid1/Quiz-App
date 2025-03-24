@@ -1,10 +1,18 @@
 "use client";
-import { useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function Quiz() {
+  return (
+    <Suspense fallback={<h2 className="text-center text-xl">Loading...</h2>}>
+      <QuizComponent />
+    </Suspense>
+  );
+}
+
+function QuizComponent() {
   const searchParams = useSearchParams();
-  const category = searchParams.get("category") || "9";
+  const category = searchParams.get("category") || "general_knowledge";
   const difficulty = searchParams.get("difficulty") || "easy";
   const mode = searchParams.get("mode") || "10";
 
@@ -19,14 +27,14 @@ export default function Quiz() {
 
   useEffect(() => {
     fetch(
-      `https://opentdb.com/api.php?amount=${
-        mode === "marathon" ? 50 : 10
-      }&category=${category}&difficulty=${difficulty}&type=multiple`
+      `https://the-trivia-api.com/v2/questions?limit=10&categories=${category}&difficulties=${difficulty}`
     )
       .then((res) => res.json())
       .then((data) => {
-        if (data.results && data.results.length > 0) {
-          setQuestions(data.results);
+        if (data && data.length > 0) {
+          setQuestions(data);
+        } else {
+          console.error("No questions found in API response.");
         }
         setLoading(false);
       })
@@ -34,11 +42,11 @@ export default function Quiz() {
         console.error("Error fetching questions:", error);
         setLoading(false);
       });
-  }, [category, difficulty, mode]);
+  }, [category, difficulty]);
 
   useEffect(() => {
     if (mode === "timed" && timeLeft > 0) {
-      const timer = setInterval(() => setTimeLeft(timeLeft - 1), 1000);
+      const timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
       return () => clearInterval(timer);
     } else if (timeLeft === 0) {
       nextQuestion();
@@ -55,21 +63,30 @@ export default function Quiz() {
     );
 
   const currentQuestion = questions[currentQuestionIndex];
+
+  if (
+    !currentQuestion ||
+    !currentQuestion.correctAnswer ||
+    !currentQuestion.incorrectAnswers
+  ) {
+    return <h2 className="text-center text-xl">Error loading question...</h2>;
+  }
+
   const answers = [
-    ...currentQuestion.incorrect_answers,
-    currentQuestion.correct_answer,
-  ].sort(() => Math.random() - 0.5);
+    ...currentQuestion.incorrectAnswers,
+    currentQuestion.correctAnswer,
+  ].sort();
 
   const handleAnswer = (answer) => {
     setSelectedAnswer(answer);
-    if (answer === currentQuestion.correct_answer) {
-      setScore(score + 1);
+    if (answer === currentQuestion.correctAnswer) {
+      setScore((prev) => prev + 1);
     }
   };
 
   const nextQuestion = () => {
     if (currentQuestionIndex + 1 < questions.length) {
-      setCurrentQuestionIndex(currentQuestionIndex + 1);
+      setCurrentQuestionIndex((prev) => prev + 1);
       setSelectedAnswer(null);
       if (mode === "timed") setTimeLeft(15);
     } else {
@@ -78,14 +95,18 @@ export default function Quiz() {
   };
 
   const showResults = () => {
-    router.push(`/results?score=${score}`);
+    router.push(
+      `/results?score=${score}&totalQuestions=${questions.length}&mode=${mode}`
+    );
   };
 
   return (
     <div className="max-w-xl mx-auto mt-10 p-5 bg-white shadow-lg rounded-lg text-center">
-      <h2 className="text-2xl font-bold mb-4">{currentQuestion.question}</h2>
+      <h2 className="text-2xl font-bold mb-4">
+        {currentQuestion.question.text}
+      </h2>
       {mode === "timed" && (
-        <p className="text-red-500 font-bold my-3"> {timeLeft} Seconds ⏳</p>
+        <p className="text-red-500 font-bold my-3">{timeLeft} Seconds ⏳</p>
       )}
       <ul className="space-y-2">
         {answers.map((answer, index) => (
@@ -93,7 +114,7 @@ export default function Quiz() {
             key={index}
             className={`p-3 border rounded-lg cursor-pointer transition ${
               selectedAnswer
-                ? answer === currentQuestion.correct_answer
+                ? answer === currentQuestion.correctAnswer
                   ? "bg-green-500 text-white"
                   : "bg-red-500 text-white"
                 : "hover:bg-gray-100"
