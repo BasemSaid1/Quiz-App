@@ -1,7 +1,16 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 
-export default function Results() {
+export default function ResultsWrapper() {
+  return (
+    <Suspense fallback={<h2 className="text-center text-xl">Loading...</h2>}>
+      <Results />
+    </Suspense>
+  );
+}
+
+function Results() {
   const searchParams = useSearchParams();
   const score = parseInt(searchParams.get("score") || "0", 10);
   const totalQuestions = parseInt(
